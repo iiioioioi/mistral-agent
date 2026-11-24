@@ -28,7 +28,7 @@ import urllib.error
 import urllib.request
 
 API_URL = "https://api.mistral.ai/v1/chat/completions"
-DEFAULT_MODEL = "mistral-small-latest"
+DEFAULT_MODEL = "ministral-8b-latest"
 
 SYSTEM_PROMPT = """You are a Linux terminal agent. You help the user complete tasks
 on their machine by using the provided tools.
@@ -217,7 +217,19 @@ def call_mistral(api_key: str, model: str, messages: list, retries: int = 5) -> 
                 time.sleep(wait)
                 delay = min(delay * 2, 60.0)
                 continue
-            raise RuntimeError(f"Mistral API error {exc.code}: {body}") from exc
+            detail = f"Mistral API error {exc.code}: {body}"
+            if exc.code == 429 and exc.headers:
+                limits = {
+                    k: v
+                    for k, v in exc.headers.items()
+                    if k.lower().startswith("x-ratelimit-limit")
+                }
+                if limits:
+                    detail += " \nrate-limit headers: " + ", ".join(f"{k}={v}" for k, v in limits.items())
+                detail += "\nhint: on Mistral's free tier, mistral-small/medium/large have effectively\n"
+                detail += "0 requests/minute. Try: --model ministral-8b-latest (188 RPM) or\n"
+                detail += "--model ministral-3b-latest (750 RPM)."
+            raise RuntimeError(detail) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"Cannot reach Mistral API: {exc.reason}") from exc
     raise RuntimeError("Mistral API error: rate limit retries exhausted")

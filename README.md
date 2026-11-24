@@ -41,7 +41,7 @@ Options:
 
 | Flag | Description |
 |---|---|
-| `--model` | Mistral model id (default: `mistral-small-latest`). Try `mistral-large-latest`, `open-mistral-nemo`, etc. |
+| `--model` | Mistral model id (default: `ministral-8b-latest`). Paid tiers can use `mistral-small-latest`, `mistral-large-latest`, etc. On the **free tier**, the Small/Medium/Large chat models have effectively 0 requests/minute — use `ministral-8b-latest`, `ministral-3b-latest`, or `codestral-latest` instead (all support function calling). |
 | `--yes`, `-y` | Auto-approve destructive-looking commands instead of asking. |
 | `--max-steps` | Max tool-calling steps per task (default 20). |
 | `--check` | Connectivity test, then exit. |
