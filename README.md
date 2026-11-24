@@ -41,7 +41,7 @@ Options:
 
 | Flag | Description |
 |---|---|
-| `--model` | Mistral model id (default: `mistral-small-latest`). Try `mistral-large-latest`, `open-mistral-nemo`, etc. |
+| `--model` | Mistral model id (default: `ministral-8b-latest`). Paid tiers can use `mistral-small-latest`, `mistral-large-latest`, etc. On the **free tier**, the Small/Medium/Large chat models have effectively 0 requests/minute — use `ministral-8b-latest`, `ministral-3b-latest`, or `codestral-latest` instead (all support function calling). |
 | `--yes`, `-y` | Auto-approve destructive-looking commands instead of asking. |
 | `--max-steps` | Max tool-calling steps per task (default 20). |
 | `--check` | Connectivity test, then exit. |
@@ -52,6 +52,13 @@ Options:
 - `read_file(path)` — read a text file
 - `write_file(path, content)` — create or overwrite a file
 - `list_dir(path)` — list a directory
+
+## Troubleshooting
+
+- **`429 Rate limit exceeded`** — Mistral's free tier has tight per-minute request/token caps. The
+  agent retries automatically with exponential backoff (Respect `Retry-After` where provided). If it
+  still fails, wait a minute or switch to a paid tier.
+- **`401 Invalid API Key`** — check the `MISTRAL_API_KEY` value.
 
 ## Safety
 
