@@ -23,6 +23,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -189,28 +190,37 @@ def confirm_run(command: str, auto_yes: bool) -> bool:
     return answer.strip().lower() in ("y", "yes")
 
 
-def call_mistral(api_key: str, model: str, messages: list) -> dict:
+def call_mistral(api_key: str, model: str, messages: list, retries: int = 5) -> dict:
     payload = json.dumps(
         {"model": model, "messages": messages, "tools": TOOLS, "tool_choice": "auto", "temperature": 0.2}
     ).encode("utf-8")
-    req = urllib.request.Request(
-        API_URL,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")[:500]
-        raise RuntimeError(f"Mistral API error {exc.code}: {body}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"Cannot reach Mistral API: {exc.reason}") from exc
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    delay = 5.0
+    for attempt in range(retries):
+        req = urllib.request.Request(API_URL, data=payload, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")[:500]
+            if exc.code == 429 and attempt < retries - 1:
+                try:
+                    wait = float(exc.headers.get("Retry-After", delay))
+                except (TypeError, ValueError):
+                    wait = delay
+                wait = min(wait, 60.0)
+                print(f"[agent] rate limited (429), retrying in {wait:.0f}s (attempt {attempt + 1}/{retries})...", file=sys.stderr)
+                time.sleep(wait)
+                delay = min(delay * 2, 60.0)
+                continue
+            raise RuntimeError(f"Mistral API error {exc.code}: {body}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Cannot reach Mistral API: {exc.reason}") from exc
+    raise RuntimeError("Mistral API error: rate limit retries exhausted")
 
 
 def chat_once(api_key: str, model: str, messages: list, auto_yes: bool) -> list:

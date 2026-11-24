@@ -53,6 +53,13 @@ Options:
 - `write_file(path, content)` — create or overwrite a file
 - `list_dir(path)` — list a directory
 
+## Troubleshooting
+
+- **`429 Rate limit exceeded`** — Mistral's free tier has tight per-minute request/token caps. The
+  agent retries automatically with exponential backoff (Respect `Retry-After` where provided). If it
+  still fails, wait a minute or switch to a paid tier.
+- **`401 Invalid API Key`** — check the `MISTRAL_API_KEY` value.
+
 ## Safety
 
 - Commands that look destructive (`rm`, `mkfs`, `dd`, forced pushes…) prompt for
