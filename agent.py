@@ -29,6 +29,8 @@ import urllib.request
 
 API_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_MODEL = "ministral-8b-latest"
+MIN_CALL_INTERVAL = 3.0
+_last_call_ts = 0.0
 
 SYSTEM_PROMPT = """You are a Linux terminal agent. You help the user complete tasks
 on their machine by using the provided tools.
@@ -191,6 +193,7 @@ def confirm_run(command: str, auto_yes: bool) -> bool:
 
 
 def call_mistral(api_key: str, model: str, messages: list, retries: int = 5) -> dict:
+    global _last_call_ts
     payload = json.dumps(
         {"model": model, "messages": messages, "tools": TOOLS, "tool_choice": "auto", "temperature": 0.2}
     ).encode("utf-8")
@@ -201,6 +204,10 @@ def call_mistral(api_key: str, model: str, messages: list, retries: int = 5) -> 
     }
     delay = 5.0
     for attempt in range(retries):
+        pacing = MIN_CALL_INTERVAL - (time.monotonic() - _last_call_ts)
+        if pacing > 0:
+            time.sleep(pacing)
+        _last_call_ts = time.monotonic()
         req = urllib.request.Request(API_URL, data=payload, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=120) as resp:
